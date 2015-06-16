@@ -16,6 +16,25 @@
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="16dp"
-        android:text="TextView" />
+        android:text="sensing value" />
+    
+    <TextView
+        android:id="@+id/voice_result"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_above="@+id/voice_btn"
+        android:layout_marginBottom="4dp"
+        android:text="recognition result" />
+
+    <Button
+        android:id="@+id/voice_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="24dp"
+        android:text="Talk to me!" />
+
 
 </RelativeLayout>

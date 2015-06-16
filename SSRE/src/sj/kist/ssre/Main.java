@@ -4,6 +4,7 @@ import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -18,11 +19,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.ParcelFileDescriptor;
+import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -37,60 +41,58 @@ public class Main extends Activity {
 	private FileInputStream mInputStream;
 	private FileOutputStream mOutputStream;
 
-	//-- 2. 필요 속성 추가 시작 부분 --//
-	// TODO
 	private static final byte COMMAND_PIEZOBUZZERSENSOR = 0x3;
 	private static final byte TARGET_PIEZOBUZZERPIN = 0x0;
 	
 	private static final byte COMMAND_PETTING = 0x4;
 	private static final byte COMMAND_HITTING = 0x5;
 	private static final byte TARGET_SERVO = 0x1;
+	private final int THRESHOLD = 100;
 	
 	private RelativeLayout face;
 	private TextView soundValueTextView;
-	
-	//private ProgressBar soundValueProgressBar;
-	//private Random random;
-	private final int THRESHOLD = 100;
 	private Intent i;
-	
-	//-- 2. 필요 속성 추가 끝 부분 --//
+	private SpeechRecognizer mRecognizer;
+	private TextView recognitionResult;
+	private Drawable basic, leftup, leftdown, rightup, rightdown, pleasure, lookdown;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		
-		mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+		basic = getResources().getDrawable(R.drawable.bg_basic);
 
+		mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 		IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
 		registerReceiver(mUsbReceiver, filter);
+		
 		setContentView(R.layout.main);
 		
-		//-- 음성인식 인텐트 추가 --//
+		soundValueTextView = (TextView) findViewById(R.id.sensor_value_textview);
+		
+		//-- 음성인식 인텐트, 리스너 및 버튼 추가 --//
 		i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
 	    i.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
 	    i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ko-KR");
-		
-		//-- 3. 추가 속성 초기화 시작 부분 --//
-		// TODO
+	    
+	    mRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+		mRecognizer.setRecognitionListener(recognitionListener);
+		recognitionResult = (TextView)findViewById(R.id.voice_result);
+	    findViewById(R.id.voice_btn).setOnClickListener(mClickListener);
+	    
+		//--화면변경을 위한 변수 설정--//
 		face = (RelativeLayout) findViewById(R.id.face);
-		soundValueTextView = (TextView) findViewById(R.id.sensor_value_textview);
-		Drawable basic = getResources().getDrawable(R.drawable.bg_basic);
 		
-		//random = new Random(System.currentTimeMillis());
-		//-- 3. 추가 속성 초기화 끝 부분 --//
-		
+		//--화면이미지 설정 및 터치이벤트 구현--//
 		face.setBackground(basic);
 		face.setClickable(true);
 		face.setOnTouchListener(new View.OnTouchListener() {
-			
 			@Override
 			public boolean onTouch(View v, MotionEvent event) {
-				Drawable basic = getResources().getDrawable(R.drawable.bg_basic);
-				Drawable leftup = getResources().getDrawable(R.drawable.bg_look_leftup);
-				Drawable leftdown = getResources().getDrawable(R.drawable.bg_look_leftdown);
-				Drawable rightup = getResources().getDrawable(R.drawable.bg_look_rightup);
-				Drawable rightdown = getResources().getDrawable(R.drawable.bg_look_rightdown);
+				basic = getResources().getDrawable(R.drawable.bg_basic);
+				leftup = getResources().getDrawable(R.drawable.bg_look_leftup);
+				leftdown = getResources().getDrawable(R.drawable.bg_look_leftdown);
+				rightup = getResources().getDrawable(R.drawable.bg_look_rightup);
+				rightdown = getResources().getDrawable(R.drawable.bg_look_rightdown);
 				
 				float x = event.getX();
 				float y = event.getY();
@@ -119,9 +121,83 @@ public class Main extends Activity {
 		});
 	}
 
-	//-- 4. 위젯 리스너 함수 시작 부분 --//
-	// TODO
-	//-- 4. 위젯 리스너 함수 끝 부분 --//
+	//-- 버튼 클릭 리스너 부분 --//
+	Button.OnClickListener mClickListener = new View.OnClickListener() {
+		public void onClick(View v) {
+			mRecognizer.startListening(i);
+		}
+	};
+	
+	//-- 음성인식 리스너 부분 --//
+	private RecognitionListener recognitionListener = new RecognitionListener() {
+		@Override
+        public void onRmsChanged(float rmsdB) {
+            // TODO Auto-generated method stub
+             
+        }
+         
+        @Override
+        public void onResults(Bundle results) {
+    		pleasure = getResources().getDrawable(R.drawable.bg_pleasure);
+    		
+        	String key = "";
+            key = SpeechRecognizer.RESULTS_RECOGNITION;
+            ArrayList<String> mResult = results.getStringArrayList(key);
+            String[] rs = new String[mResult.size()];
+            mResult.toArray(rs);
+            if(rs[0].matches(".*안녕.*")) {
+				face.setBackground(pleasure);
+				try {
+				    Thread.sleep(2000);
+				} catch(InterruptedException ex) {
+				    Thread.currentThread().interrupt();
+				}
+			}
+			recognitionResult.setText(""+rs[0]);
+        }
+         
+        @Override
+        public void onReadyForSpeech(Bundle params) {
+            // TODO Auto-generated method stub
+             
+        }
+         
+        @Override
+        public void onPartialResults(Bundle partialResults) {
+            // TODO Auto-generated method stub
+             
+        }
+         
+        @Override
+        public void onEvent(int eventType, Bundle params) {
+            // TODO Auto-generated method stub
+             
+        }
+         
+        @Override
+        public void onError(int error) {
+            // TODO Auto-generated method stub
+             
+        }
+         
+        @Override
+        public void onEndOfSpeech() {
+            // TODO Auto-generated method stub
+             
+        }
+         
+        @Override
+        public void onBufferReceived(byte[] buffer) {
+            // TODO Auto-generated method stub
+             
+        }
+         
+        @Override
+        public void onBeginningOfSpeech() {
+            // TODO Auto-generated method stub
+             
+        }
+	};
 	
 	// 추후에 바뀌지 않는 부분
 	Runnable commRunnable = new Runnable() {
@@ -181,9 +257,9 @@ public class Main extends Activity {
 	Handler mHandler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
-			Drawable basic = getResources().getDrawable(R.drawable.bg_basic);
-			Drawable lookdown = getResources().getDrawable(R.drawable.bg_lookdown);
-			Drawable pleasure = getResources().getDrawable(R.drawable.bg_pleasure);
+			basic = getResources().getDrawable(R.drawable.bg_basic);
+			lookdown = getResources().getDrawable(R.drawable.bg_lookdown);
+			pleasure = getResources().getDrawable(R.drawable.bg_pleasure);
 			switch (msg.what) {
 			//-- 5. 액세서리로부터 받은 메시지 처리 시작 부분 --//
 			// TODO
