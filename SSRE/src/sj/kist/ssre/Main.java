@@ -5,8 +5,10 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
 
 import android.app.Activity;
+import android.app.SearchManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -14,11 +16,13 @@ import android.content.IntentFilter;
 import android.graphics.drawable.Drawable;
 import android.hardware.usb.UsbAccessory;
 import android.hardware.usb.UsbManager;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.ParcelFileDescriptor;
+import android.provider.AlarmClock;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -108,13 +112,23 @@ public class Main extends Activity {
 						face.setBackground(rightup);
 					else
 						face.setBackground(rightdown);
-
-					Toast.makeText(getApplicationContext(), "x="+x+" y="+y, Toast.LENGTH_SHORT).show();
+					break;
+					
+				case MotionEvent.ACTION_MOVE:
+					if(x<540 && y<920)
+						face.setBackground(leftup);
+					else if (x<540 && y>=920)
+						face.setBackground(leftdown);
+					else if(x>=540 && y<920)
+						face.setBackground(rightup);
+					else
+						face.setBackground(rightdown);
 					break;
 					
 				case MotionEvent.ACTION_UP:
 					face.setBackground(basic);
 					break;
+					
 				}
 				return false;
 			}
@@ -138,22 +152,103 @@ public class Main extends Activity {
          
         @Override
         public void onResults(Bundle results) {
+        	Intent instruction;
     		pleasure = getResources().getDrawable(R.drawable.bg_pleasure);
-    		
         	String key = "";
             key = SpeechRecognizer.RESULTS_RECOGNITION;
             ArrayList<String> mResult = results.getStringArrayList(key);
             String[] rs = new String[mResult.size()];
             mResult.toArray(rs);
+            
             if(rs[0].matches(".*안녕.*")) {
 				face.setBackground(pleasure);
+				recognitionResult.setText(""+rs[0]);
 				try {
 				    Thread.sleep(2000);
 				} catch(InterruptedException ex) {
 				    Thread.currentThread().interrupt();
 				}
+				
 			}
-			recognitionResult.setText(""+rs[0]);
+            else if (rs[0].matches(".*날씨.*")) {
+				face.setBackground(pleasure);
+				recognitionResult.setText(""+rs[0]);
+				try {
+				    Thread.sleep(2000);
+				} catch(InterruptedException ex) {
+				    Thread.currentThread().interrupt();
+				}
+				instruction = new Intent(Intent.ACTION_WEB_SEARCH);
+				instruction.putExtra(SearchManager.QUERY, "날씨");
+				startActivity(instruction);
+			}
+            else if (rs[0].matches(".*심심.*")||rs[0].matches(".*뉴스.*")) {
+				face.setBackground(pleasure);
+				recognitionResult.setText(""+rs[0]);
+				try {
+				    Thread.sleep(2000);
+				} catch(InterruptedException ex) {
+				    Thread.currentThread().interrupt();
+				}
+				instruction = new Intent(Intent.ACTION_WEB_SEARCH);
+				instruction.putExtra(SearchManager.QUERY, "뉴스");
+				startActivity(instruction);
+			}
+            else if (rs[0].matches(".*119.*")||rs[0].matches(".*구급차.*")) {
+				recognitionResult.setText(""+rs[0]);
+				instruction = new Intent(Intent.ACTION_CALL, Uri.parse("tel:119"));
+				startActivity(instruction);
+			}
+            else if (rs[0].matches(".*아파.*")||rs[0].matches(".*병원.*")) {
+				//face.setBackground();
+				recognitionResult.setText(""+rs[0]);
+				try {
+				    Thread.sleep(2000);
+				} catch(InterruptedException ex) {
+				    Thread.currentThread().interrupt();
+				}
+				if(rs[0].matches(".*무릎.*")||rs[0].matches(".*허리.*")) {
+					Uri gmmIntentUri = Uri.parse("geo:0,0?q=정형외과");
+					Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+					mapIntent.setPackage("com.google.android.apps.maps");
+					startActivity(mapIntent);
+				}
+				else {
+					Uri gmmIntentUri = Uri.parse("geo:0,0?q=병원");
+					Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+					mapIntent.setPackage("com.google.android.apps.maps");
+					startActivity(mapIntent);
+				}
+			}
+            else if (rs[0].matches(".*찾아.*")||rs[0].matches(".*검색.*")) {
+				recognitionResult.setText(""+rs[0]);
+				String[] words = rs[0].split(" ");
+				
+				instruction = new Intent(Intent.ACTION_WEB_SEARCH);
+				instruction.putExtra(SearchManager.QUERY, words[0]);
+				startActivity(instruction);
+			}
+			else if (rs[0].matches(".*시간.*후.*")||rs[0].matches(".*시간.*뒤.*")||rs[0].matches(".*시.*알람.*")) {
+				//face.setBackground(pleasure);
+				recognitionResult.setText(""+rs[0]);
+				
+				int position = rs[0].indexOf("시");
+				char hour = rs[0].charAt(position-1);
+				Calendar calendar = Calendar.getInstance();
+				calendar.add(Calendar.HOUR_OF_DAY, hour);
+				int mHour = calendar.get(Calendar.HOUR_OF_DAY);
+				int mMin = calendar.get(Calendar.MINUTE);
+				//버그 : 더해서 12시를 넘는 시간이 되면 24시간 이후로 설정됨
+				
+				if(hour != ' ') {
+					//Toast.makeText(getApplicationContext(), hour, Toast.LENGTH_SHORT).show();
+					instruction = new Intent(AlarmClock.ACTION_SET_ALARM);
+					instruction.putExtra(AlarmClock.EXTRA_HOUR, mHour);
+					instruction.putExtra(AlarmClock.EXTRA_MINUTES, mMin);
+					startActivity(instruction);
+				}
+			}
+			
         }
          
         @Override
