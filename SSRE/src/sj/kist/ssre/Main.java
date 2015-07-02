@@ -11,6 +11,7 @@ import android.app.Activity;
 import android.app.SearchManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.drawable.Drawable;
@@ -18,6 +19,7 @@ import android.hardware.usb.UsbAccessory;
 import android.hardware.usb.UsbManager;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -30,6 +32,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -449,7 +452,19 @@ public class Main extends Activity {
 				// USB 액세서리 연결창에서 확인을 누르면
 				openAccessory(accessory);
 			} 
-		} 
+		}
+		
+		//배터리 충전 상태 값 받아와서 화면 밝기(0.0~1.0)에 적용
+		IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+		Intent batteryStatus = this.registerReceiver(null, ifilter);
+		int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+		int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+
+		float batteryPct = level / (float)scale;
+		
+		WindowManager.LayoutParams myLayoutParameter = getWindow().getAttributes();
+		myLayoutParameter.screenBrightness = batteryPct;
+		getWindow().setAttributes(myLayoutParameter);
 	}
 	
 	@Override
