@@ -48,13 +48,21 @@ public class Main extends Activity {
 	private FileInputStream mInputStream;
 	private FileOutputStream mOutputStream;
 
-	private static final byte COMMAND_PIEZOBUZZERSENSOR = 0x3;
-	private static final byte TARGET_PIEZOBUZZERPIN = 0x0;
 	
+	private static final byte TARGET_PIEZOBUZZERPIN = 0x0;
+	private static final byte TARGET_SERVO = 0x1;
+
+	private static final byte COMMAND_PIEZOBUZZERSENSOR = 0x3;
 	private static final byte COMMAND_PETTING = 0x4;
 	private static final byte COMMAND_HITTING = 0x5;
-	private static final byte TARGET_SERVO = 0x1;
-	private final int THRESHOLD = 100;
+	
+	private static final byte COMMAND_PLEASURE = 0x6;
+	private static final byte COMMAND_SAD = 0x7;
+	private static final byte COMMAND_SURPRISE = 0x8;
+	private static final byte COMMAND_ANGRY = 0x9;
+	private static final byte COMMAND_FEAR = 0x10;
+	
+	private final int THRESHOLD = 200;
 	
 	private RelativeLayout face;
 	private TextView soundValueTextView;
@@ -156,6 +164,7 @@ public class Main extends Activity {
         @Override
         public void onResults(Bundle results) {
         	Intent instruction;
+        	byte sendData=0x0;
     		pleasure = getResources().getDrawable(R.drawable.bg_pleasure);
         	String key = "";
             key = SpeechRecognizer.RESULTS_RECOGNITION;
@@ -171,6 +180,8 @@ public class Main extends Activity {
 				} catch(InterruptedException ex) {
 				    Thread.currentThread().interrupt();
 				}
+				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, sendData);		
+				sendAccMsg(sndMsg);
 				
 			}
             else if (rs[0].matches(".*날씨.*")) {
@@ -205,6 +216,8 @@ public class Main extends Activity {
             else if (rs[0].matches(".*아파.*")||rs[0].matches(".*병원.*")) {
 				//face.setBackground();
 				recognitionResult.setText(""+rs[0]);
+				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SAD,TARGET_SERVO, sendData);		
+				sendAccMsg(sndMsg);
 				try {
 				    Thread.sleep(2000);
 				} catch(InterruptedException ex) {
@@ -342,12 +355,10 @@ public class Main extends Activity {
 		final byte value = buffer[2];
 		
 		// 메시지를 구성한다.
-		AccessoryMessage accMsg = 
-			new AccessoryMessage(command,target,value);		
+		AccessoryMessage accMsg = new AccessoryMessage(command,target,value);		
 				
 		// 주 쓰레드에서 수행할 메시지를 만든다
-		Message m = Message.obtain(
-			mHandler, command);
+		Message m = Message.obtain(mHandler, command);
 		m.obj = accMsg;
 		mHandler.sendMessage(m);
 	}
@@ -371,14 +382,14 @@ public class Main extends Activity {
 					if(soundValue >= THRESHOLD) {
 						//face.setBackgroundColor(Color.rgb(random.nextInt(256),random.nextInt(256),random.nextInt(256)));
 						face.setBackground(lookdown);
-						AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_HITTING,TARGET_SERVO, accMsg.getValue());		
-						sendAccMsg(sndMsg);
+						//AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_HITTING,TARGET_SERVO, accMsg.getValue());		
+						//sendAccMsg(sndMsg);
 					} else if(soundValue >= 10) {
 						face.setBackground(pleasure);
-						AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PETTING,TARGET_SERVO, accMsg.getValue());		
-						sendAccMsg(sndMsg);
+						//AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PETTING,TARGET_SERVO, accMsg.getValue());		
+						//sendAccMsg(sndMsg);
 					} else {
-						face.setBackground(basic);
+						//face.setBackground(basic);
 					}
 				}
 			break;
