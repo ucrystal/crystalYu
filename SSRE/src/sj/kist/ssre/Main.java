@@ -57,9 +57,9 @@ public class Main extends Activity {
 	private static final byte COMMAND_HITTING = 0x5;
 	
 	private static final byte COMMAND_PLEASURE = 0x6;
-	private static final byte COMMAND_SAD = 0x7;
+	private static final byte COMMAND_SORROW = 0x7;
 	private static final byte COMMAND_SURPRISE = 0x8;
-	private static final byte COMMAND_ANGRY = 0x9;
+	private static final byte COMMAND_ANGER = 0x9;
 	private static final byte COMMAND_FEAR = 0x10;
 	
 	private final int THRESHOLD = 200;
@@ -210,13 +210,15 @@ public class Main extends Activity {
 			}
             else if (rs[0].matches(".*119.*")||rs[0].matches(".*구급차.*")) {
 				recognitionResult.setText(""+rs[0]);
+				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SURPRISE,TARGET_SERVO, sendData);		
+				sendAccMsg(sndMsg);
 				instruction = new Intent(Intent.ACTION_CALL, Uri.parse("tel:119"));
 				startActivity(instruction);
 			}
             else if (rs[0].matches(".*아파.*")||rs[0].matches(".*병원.*")) {
 				//face.setBackground();
 				recognitionResult.setText(""+rs[0]);
-				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SAD,TARGET_SERVO, sendData);		
+				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, sendData);		
 				sendAccMsg(sndMsg);
 				try {
 				    Thread.sleep(2000);
@@ -239,6 +241,9 @@ public class Main extends Activity {
             else if (rs[0].matches(".*찾아.*")||rs[0].matches(".*검색.*")) {
 				recognitionResult.setText(""+rs[0]);
 				String[] words = rs[0].split(" ");
+				
+				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, sendData);		
+				sendAccMsg(sndMsg);
 				
 				instruction = new Intent(Intent.ACTION_WEB_SEARCH);
 				instruction.putExtra(SearchManager.QUERY, words[0]);
@@ -264,7 +269,16 @@ public class Main extends Activity {
 					startActivity(instruction);
 				}
 			}
-			
+			else if (rs[0].matches(".*짜증.*")||rs[0].matches(".*싫어.*")) {
+				recognitionResult.setText(""+rs[0]);
+				try {
+				    Thread.sleep(2000);
+				} catch(InterruptedException ex) {
+				    Thread.currentThread().interrupt();
+				}
+				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_ANGER,TARGET_SERVO, sendData);		
+				sendAccMsg(sndMsg);
+			}
         }
          
         @Override
