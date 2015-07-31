@@ -48,13 +48,11 @@ public class Main extends Activity {
 	private FileInputStream mInputStream;
 	private FileOutputStream mOutputStream;
 
-	
-	private static final byte TARGET_PIEZOBUZZERPIN = 0x0;
+	private static final byte sendData=0x0;
+	private static final byte TARGET_FSRSENSORIN = 0x0;
 	private static final byte TARGET_SERVO = 0x1;
-
-	private static final byte COMMAND_PIEZOBUZZERSENSOR = 0x3;
-	private static final byte COMMAND_PETTING = 0x4;
-	private static final byte COMMAND_HITTING = 0x5;
+	private static final byte COMMAND_FSRSENSOR = 0x3;
+	private static final byte TARGET_VRINIT = 0x2;
 	
 	private static final byte COMMAND_PLEASURE = 0x6;
 	private static final byte COMMAND_SORROW = 0x7;
@@ -62,28 +60,32 @@ public class Main extends Activity {
 	private static final byte COMMAND_ANGER = 0x9;
 	private static final byte COMMAND_FEAR = 0x10;
 	
-	private final int THRESHOLD = 200;
+	private final int THRESHOLD = 300;
+	
+	private String [] needAttributes = {"hungry", "fatigue", "safety", "interaction", "execute"};
+	private int [] initNeed = {0,0,0,0,0}; 
 	
 	private RelativeLayout face;
-	private TextView soundValueTextView;
+	private TextView sensorValueTextView;
 	private Intent i;
 	private SpeechRecognizer mRecognizer;
 	private TextView recognitionResult;
 	private Drawable basic, leftup, leftdown, rightup, rightdown, pleasure, lookdown;
+	private TextView batteryState;
+	float batteryPct;
+	Need need;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		setContentView(R.layout.main);
+		//--화면이미지 설정--//
 		basic = getResources().getDrawable(R.drawable.bg_basic);
-
+		
 		mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 		IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
 		registerReceiver(mUsbReceiver, filter);
-		
-		setContentView(R.layout.main);
-		
-		soundValueTextView = (TextView) findViewById(R.id.sensor_value_textview);
-		
+
 		//-- 음성인식 인텐트, 리스너 및 버튼 추가 --//
 		i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
 	    i.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
@@ -93,12 +95,38 @@ public class Main extends Activity {
 		mRecognizer.setRecognitionListener(recognitionListener);
 		recognitionResult = (TextView)findViewById(R.id.voice_result);
 	    findViewById(R.id.voice_btn).setOnClickListener(mClickListener);
-	    
+	    sensorValueTextView = (TextView) findViewById(R.id.sensor_value_textview);
+		batteryState = (TextView) findViewById(R.id.batteryState);
 		//--화면변경을 위한 변수 설정--//
-		face = (RelativeLayout) findViewById(R.id.face);
+	    face = (RelativeLayout) findViewById(R.id.face);
 		
-		//--화면이미지 설정 및 터치이벤트 구현--//
-		face.setBackground(basic);
+		//배터리 충전 상태 값 받아오기
+		IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+		Intent batteryStatus = this.registerReceiver(null, ifilter);
+		int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+		int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+		batteryPct = level / (float)scale;
+		
+	    //-- Need 클래스 생성 --//
+	    need = new Need(this);
+	    need.setData(needAttributes, initNeed);	
+
+	    //hungry욕구 설정
+		need.updateData("hungry", (int)(batteryPct*100));
+		
+		//hungry 동기 유발 조건
+	    if(need.getData("hungry")>=60) {
+	    	Log.v("check", "onCreate_hungry 60이상 조건");
+	    	face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
+			AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, sendData);		
+			sendAccMsg(sndMsg);
+	    }
+	    
+		//배터리 상태값 출력
+		//int hungry = need.getData("hungry");
+		//batteryState.setText(Integer.toString(hungry));
+		
+	    //--화면 터치이벤트 구현--//
 		face.setClickable(true);
 		face.setOnTouchListener(new View.OnTouchListener() {
 			@Override
@@ -164,7 +192,6 @@ public class Main extends Activity {
         @Override
         public void onResults(Bundle results) {
         	Intent instruction;
-        	byte sendData=0x0;
     		pleasure = getResources().getDrawable(R.drawable.bg_pleasure);
         	String key = "";
             key = SpeechRecognizer.RESULTS_RECOGNITION;
@@ -386,19 +413,21 @@ public class Main extends Activity {
 			switch (msg.what) {
 			//-- 5. 액세서리로부터 받은 메시지 처리 시작 부분 --//
 			// TODO
-			case COMMAND_PIEZOBUZZERSENSOR:
+			case COMMAND_FSRSENSOR:
 				AccessoryMessage accMsg = (AccessoryMessage) msg.obj;
 				int soundValue = (accMsg.getValue()&0xFF)<<2;
-				if(accMsg.getTarget() == TARGET_PIEZOBUZZERPIN) {
-					//soundValueProgressBar.setProgress(soundValue);
-					soundValueTextView.setText("Sound Value : " + soundValue);
+				
+				if(accMsg.getTarget() == TARGET_VRINIT) {
+					mRecognizer.startListening(i);
+				}
+				if(accMsg.getTarget() == TARGET_FSRSENSORIN) {
+					sensorValueTextView.setText("sensing value : " + soundValue);
 					
 					if(soundValue >= THRESHOLD) {
-						//face.setBackgroundColor(Color.rgb(random.nextInt(256),random.nextInt(256),random.nextInt(256)));
 						face.setBackground(lookdown);
 						//AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_HITTING,TARGET_SERVO, accMsg.getValue());		
 						//sendAccMsg(sndMsg);
-					} else if(soundValue >= 10) {
+					} else if(soundValue >= 30) {
 						face.setBackground(pleasure);
 						//AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PETTING,TARGET_SERVO, accMsg.getValue());		
 						//sendAccMsg(sndMsg);
@@ -478,18 +507,12 @@ public class Main extends Activity {
 				openAccessory(accessory);
 			} 
 		}
-		
-		//배터리 충전 상태 값 받아와서 화면 밝기(0.0~1.0)에 적용
-		IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-		Intent batteryStatus = this.registerReceiver(null, ifilter);
-		int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-		int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-
-		float batteryPct = level / (float)scale;
-		
+		int batteryStateShow = (int)(batteryPct*100);
+		batteryState.setText(Integer.toString(batteryStateShow));
 		WindowManager.LayoutParams myLayoutParameter = getWindow().getAttributes();
 		myLayoutParameter.screenBrightness = batteryPct;
 		getWindow().setAttributes(myLayoutParameter);
+
 	}
 	
 	@Override
@@ -537,8 +560,7 @@ public class Main extends Activity {
 		mFileDescriptor = mUsbManager.openAccessory(accessory);
 		if (mFileDescriptor != null) {
 			mAccessory = accessory;
-			FileDescriptor fd = 
-					mFileDescriptor.getFileDescriptor();
+			FileDescriptor fd = mFileDescriptor.getFileDescriptor();
 			mInputStream = new FileInputStream(fd);
 			mOutputStream = new FileOutputStream(fd);
 			Thread thread = new Thread(null, commRunnable, TAG);

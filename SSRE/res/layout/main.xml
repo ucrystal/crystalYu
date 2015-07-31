@@ -3,6 +3,7 @@
     android:id="@+id/face"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/bg_basic"
     android:paddingBottom="@dimen/activity_vertical_margin"
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
@@ -36,5 +37,12 @@
         android:layout_marginBottom="24dp"
         android:text="Talk to me!" />
 
+    <TextView
+        android:id="@+id/batteryState"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/sensor_value_textview"
+        android:layout_centerHorizontal="true"
+        android:text="batteryState" />
 
 </RelativeLayout>
