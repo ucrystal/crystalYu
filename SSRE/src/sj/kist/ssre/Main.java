@@ -58,9 +58,9 @@ public class Main extends Activity {
 	private static final byte COMMAND_SORROW = 0x7;
 	private static final byte COMMAND_SURPRISE = 0x8;
 	private static final byte COMMAND_ANGER = 0x9;
-	private static final byte COMMAND_FEAR = 0x10;
+	private static final byte COMMAND_FEAR = 0xa;
 	
-	private static final byte COMMAND_HUNGRY = 0x11;
+	private static final byte COMMAND_HUNGRY = 0xb;
 	
 	private final int THRESHOLD = 300;
 	
@@ -77,6 +77,8 @@ public class Main extends Activity {
 	float batteryPct;
 	private Need need;
 	int touchCount = 0;
+	int safetyCount = 0;
+	int loveCount = 0;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -142,7 +144,7 @@ public class Main extends Activity {
 				
 				case MotionEvent.ACTION_DOWN:
 					touchCount++;
-					need.updateData("fatigue", (int)(touchCount));
+					need.updateData("fatigue", touchCount);
 					
 					if(x<540 && y<920)
 						face.setBackground(leftup);
@@ -167,6 +169,7 @@ public class Main extends Activity {
 					
 				case MotionEvent.ACTION_UP:
 					face.setBackground(basic);
+					checkNeed("safety");
 					checkNeed("fatigue");
 					break;
 					
@@ -217,10 +220,15 @@ public class Main extends Activity {
 			}
             else if (rs[0].matches(".*날씨.*")) {
             	if(touchCount >= 30) return;
-				face.setBackground(pleasure);
-				instruction = new Intent(Intent.ACTION_WEB_SEARCH);
-				instruction.putExtra(SearchManager.QUERY, "날씨");
-				startActivity(instruction);
+            	loveCount++;
+            	need.updateData("interaction", loveCount);
+            	if(loveCount < 5) {  	
+					face.setBackground(pleasure);
+					instruction = new Intent(Intent.ACTION_WEB_SEARCH);
+					instruction.putExtra(SearchManager.QUERY, "날씨");
+					startActivity(instruction);
+            	} else
+            		checkNeed("interaction");
 			}
             else if (rs[0].matches(".*심심.*")||rs[0].matches(".*뉴스.*")) {
             	if(touchCount >= 30) return;
@@ -292,9 +300,14 @@ public class Main extends Activity {
 				sendAccMsg(sndMsg);
 			}
 			else if (rs[0].matches(".*일어나.*")) {
-				touchCount = 0;
-				need.updateData("fatigue", (int)(touchCount));
-				checkNeed("fatigue");
+				if(touchCount >= 30) {
+					touchCount = 0;
+					need.updateData("fatigue", (int)(touchCount));
+					checkNeed("fatigue");
+					face.setBackground(getResources().getDrawable(R.drawable.bg_surprise));
+					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SURPRISE,TARGET_SERVO, defaultToArduino);		
+					sendAccMsg(sndMsg);
+				}
 			}
         }
          
@@ -411,15 +424,34 @@ public class Main extends Activity {
 					sensorValueTextView.setText("sensing value : " + soundValue);
 					
 					if(soundValue >= THRESHOLD) {
-						face.setBackground(getResources().getDrawable(R.drawable.bg_lookdown));
-						//AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_HITTING,TARGET_SERVO, accMsg.getValue());		
-						//sendAccMsg(sndMsg);
+						safetyCount++;
+						need.updateData("safety", safetyCount);
+						
+						if(safetyCount < 5 || touchCount < 30) {
+							face.setBackground(getResources().getDrawable(R.drawable.bg_sorrow));
+							AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, defaultToArduino);		
+							sendAccMsg(sndMsg);
+						} else {
+							checkNeed("safety");
+							checkNeed("fatigue");
+						}
 					} else if(soundValue >= 30) {
-						face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
-						//AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PETTING,TARGET_SERVO, accMsg.getValue());		
-						//sendAccMsg(sndMsg);
+						safetyCount--;
+						need.updateData("safety", safetyCount);
+						loveCount--;
+						need.updateData("interaction", loveCount);
+						if(safetyCount < 5 || touchCount < 30) {
+							face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
+							AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
+							sendAccMsg(sndMsg);
+						} else {
+							checkNeed("interaction");
+							checkNeed("safety");
+							checkNeed("fatigue");
+						}
+						
 					} else {
-						//face.setBackground(basic);
+						//face.setBackground(getResources().getDrawable(R.drawable.bg_basic));
 					}
 				}
 			break;
@@ -569,7 +601,7 @@ public class Main extends Activity {
 		}
 	}
 	
-	private void checkNeed(String needVar) {
+	private int checkNeed(String needVar) {
 		if(needVar.equals("hungry")) {
 			int currentHungry = need.getData(needVar);
 			if (currentHungry < 60) {
@@ -577,31 +609,66 @@ public class Main extends Activity {
 		    	face.setBackground(getResources().getDrawable(R.drawable.bg_hungry));
 				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_HUNGRY,TARGET_SERVO, defaultToArduino);		
 				sendAccMsg(sndMsg);
-		    }
+				return 1;
+		    } else
+		    	return 0;
 		} else if (needVar.equals("fatigue")) {
-			int currentFatigue = need.getData(needVar);
-			
-			if(currentFatigue >= 30) {
-				Log.v("checkNeed", "fatigue 30이상 조건");
-				face.setBackground(getResources().getDrawable(R.drawable.bg_sleep));
-				face.setEnabled(false);
-			} else if(currentFatigue >= 15) {
-				Log.v("checkNeed", "fatigue 15이상 조건");
-		    	face.setBackground(getResources().getDrawable(R.drawable.bg_tired));
-				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, defaultToArduino);
-				sendAccMsg(sndMsg);
-			} else if(currentFatigue == 0) {
-				Log.v("checkNeed", "fatigue 15미만 조건");
-				face.setEnabled(true);
-				face.setBackground(getResources().getDrawable(R.drawable.bg_basic));
+			if(checkNeed("hungry")==0) {				//하위 욕구 검사 결과, 동기 수행하지 않을 경우에만 상위 욕구 검사!
+				int currentFatigue = need.getData(needVar);
+				if(currentFatigue >= 30) {
+					Log.v("checkNeed", "fatigue 30이상 조건");
+					face.setBackground(getResources().getDrawable(R.drawable.bg_sleep));
+					face.setEnabled(false);
+					return 1;
+				} else if(currentFatigue >= 15) {
+					Log.v("checkNeed", "fatigue 15이상 조건");
+			    	face.setBackground(getResources().getDrawable(R.drawable.bg_tired));
+					//AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, defaultToArduino);
+					//sendAccMsg(sndMsg);
+			    	return 1;
+				} else {
+					Log.v("checkNeed", "little fatigue");
+					face.setEnabled(true);
+					//face.setBackground(getResources().getDrawable(R.drawable.bg_basic));
+					return 0;
+				}
 			}
 			
 		} else if (needVar.equals("safety")) {
-			
+			if(checkNeed("hungry")==0 && checkNeed("fatigue")==0) {	//하위 욕구 결과가 모두 동기 발현되지 않아야 상위 욕구 검사 수행!
+				int currentSafetyneed = need.getData(needVar);
+				if(currentSafetyneed >= 5) {
+			    	Log.v("checkNeed", "safety 5이상 조건");
+			    	face.setBackground(getResources().getDrawable(R.drawable.bg_fear));
+					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_FEAR,TARGET_SERVO, defaultToArduino);		
+					sendAccMsg(sndMsg);
+					return 1;
+				} else
+					return 0;
+			}
 		} else if (needVar.equals("interaction")) {
-			
+			if(checkNeed("hungry")==0 && checkNeed("fatigue")==0 && checkNeed("safety")==0){
+				int currentLoveneed = need.getData(needVar);
+				if(currentLoveneed >= 5) {
+			    	Log.v("checkNeed", "loveneed 5이상 조건");
+			    	face.setBackground(getResources().getDrawable(R.drawable.bg_needlove));
+					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
+					sendAccMsg(sndMsg);
+					return 1;
+				} else
+					return 0;
+			}
 		} else if (needVar.equals("execute")) {
+			if(checkNeed("hungry")==0 && checkNeed("fatigue")==0 && checkNeed("safety")==0 && checkNeed("interaction")==0){
+				int currentExecuteneed = need.getData(needVar);
+				if(currentExecuteneed >= 5) {
+					return 1;
+				} else
+					return 0;
+			}
 			
 		}
+		
+		return 0;
 	}
 }
