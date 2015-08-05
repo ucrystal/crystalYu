@@ -72,20 +72,21 @@ public class Main extends Activity {
 	private Intent i;
 	private SpeechRecognizer mRecognizer;
 	private TextView recognitionResult;
-	private Drawable basic, leftup, leftdown, rightup, rightdown, pleasure, lookdown;
+	//private Drawable basic, leftup, leftdown, rightup, rightdown, pleasure, lookdown;
 	private TextView batteryState;
 	float batteryPct;
 	private Need need;
 	int touchCount = 0;
 	int safetyCount = 0;
 	int loveCount = 0;
+	int executeCount = 0;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 		//--화면이미지 설정--//
-		basic = getResources().getDrawable(R.drawable.bg_basic);
+		//basic = getResources().getDrawable(R.drawable.bg_basic);
 		
 		mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 		IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
@@ -131,11 +132,6 @@ public class Main extends Activity {
 		face.setOnTouchListener(new View.OnTouchListener() {
 			@Override
 			public boolean onTouch(View v, MotionEvent event) {
-				basic = getResources().getDrawable(R.drawable.bg_basic);
-				leftup = getResources().getDrawable(R.drawable.bg_look_leftup);
-				leftdown = getResources().getDrawable(R.drawable.bg_look_leftdown);
-				rightup = getResources().getDrawable(R.drawable.bg_look_rightup);
-				rightdown = getResources().getDrawable(R.drawable.bg_look_rightdown);
 				
 				float x = event.getX();
 				float y = event.getY();
@@ -147,30 +143,29 @@ public class Main extends Activity {
 					need.updateData("fatigue", touchCount);
 					
 					if(x<540 && y<920)
-						face.setBackground(leftup);
+						face.setBackground(getResources().getDrawable(R.drawable.bg_look_leftup));
 					else if (x<540 && y>=920)
-						face.setBackground(leftdown);
+						face.setBackground(getResources().getDrawable(R.drawable.bg_look_leftdown));
 					else if(x>=540 && y<920)
-						face.setBackground(rightup);
+						face.setBackground(getResources().getDrawable(R.drawable.bg_look_rightup));
 					else
-						face.setBackground(rightdown);
+						face.setBackground(getResources().getDrawable(R.drawable.bg_look_rightdown));
 					break;
 					
 				case MotionEvent.ACTION_MOVE:
 					if(x<540 && y<920)
-						face.setBackground(leftup);
+						face.setBackground(getResources().getDrawable(R.drawable.bg_look_leftup));
 					else if (x<540 && y>=920)
-						face.setBackground(leftdown);
+						face.setBackground(getResources().getDrawable(R.drawable.bg_look_leftdown));
 					else if(x>=540 && y<920)
-						face.setBackground(rightup);
+						face.setBackground(getResources().getDrawable(R.drawable.bg_look_rightup));
 					else
-						face.setBackground(rightdown);
+						face.setBackground(getResources().getDrawable(R.drawable.bg_look_rightdown));
 					break;
 					
 				case MotionEvent.ACTION_UP:
-					face.setBackground(basic);
+					face.setBackground(getResources().getDrawable(R.drawable.bg_basic));
 					checkNeed("safety");
-					checkNeed("fatigue");
 					break;
 					
 				}
@@ -197,7 +192,6 @@ public class Main extends Activity {
         @Override
         public void onResults(Bundle results) {
         	Intent instruction;
-    		pleasure = getResources().getDrawable(R.drawable.bg_pleasure);
         	String key = "";
             key = SpeechRecognizer.RESULTS_RECOGNITION;
             ArrayList<String> mResult = results.getStringArrayList(key);
@@ -206,101 +200,136 @@ public class Main extends Activity {
             recognitionResult.setText(""+rs[0]);
             
             if(rs[0].matches(".*안녕.*")) {
-            	if(touchCount >= 30) return;	//피곤함이 30이상이면 sleep모드이므로 명령수행없이 음성인식 종료
-				face.setBackground(pleasure);
-				/*
-				try {
-				    Thread.sleep(2000);
-				} catch(InterruptedException ex) {
-				    Thread.currentThread().interrupt();
-				}*/
+            	if(checkNeed("fatigue")==1) return;	//피곤함이 30이상이면 sleep모드이므로 명령수행없이 음성인식 종료
+            	loveCount--;
+            	need.updateData("interaction", loveCount);
+            	executeCount++;
+            	need.updateData("execute", executeCount);
+            	
+            	if(checkNeed("execute")==0) {
+				face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
 				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
 				sendAccMsg(sndMsg);
-				
+            	}
 			}
             else if (rs[0].matches(".*날씨.*")) {
-            	if(touchCount >= 30) return;
+            	if(checkNeed("fatigue")==1) return;
             	loveCount++;
             	need.updateData("interaction", loveCount);
-            	if(loveCount < 5) {  	
-					face.setBackground(pleasure);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("execute")==0) {
+					face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
 					instruction = new Intent(Intent.ACTION_WEB_SEARCH);
 					instruction.putExtra(SearchManager.QUERY, "날씨");
 					startActivity(instruction);
-            	} else
-            		checkNeed("interaction");
+            	}
 			}
             else if (rs[0].matches(".*심심.*")||rs[0].matches(".*뉴스.*")) {
-            	if(touchCount >= 30) return;
-				face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
-				instruction = new Intent(Intent.ACTION_WEB_SEARCH);
-				instruction.putExtra(SearchManager.QUERY, "뉴스");
-				startActivity(instruction);
+            	if(checkNeed("fatigue")==1) return;
+            	loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("execute")==0) {
+					face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
+					instruction = new Intent(Intent.ACTION_WEB_SEARCH);
+					instruction.putExtra(SearchManager.QUERY, "뉴스");
+					startActivity(instruction);
+            	}
 			}
             else if (rs[0].matches(".*119.*")||rs[0].matches(".*구급차.*")) {
-            	if(touchCount >= 30) return;
-				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SURPRISE,TARGET_SERVO, defaultToArduino);		
-				sendAccMsg(sndMsg);
-				instruction = new Intent(Intent.ACTION_CALL, Uri.parse("tel:119"));
-				startActivity(instruction);
+            	if(checkNeed("fatigue")==1) return;
+            	loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("execute")==0) {
+					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SURPRISE,TARGET_SERVO, defaultToArduino);		
+					sendAccMsg(sndMsg);
+					instruction = new Intent(Intent.ACTION_CALL, Uri.parse("tel:119"));
+					startActivity(instruction);
+            	}
 			}
             else if (rs[0].matches(".*아파.*")||rs[0].matches(".*병원.*")) {
-            	if(touchCount >= 30) return;
+            	if(checkNeed("fatigue")==1) return;
 				//face.setBackground();
-				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, defaultToArduino);		
-				sendAccMsg(sndMsg);
-				if(rs[0].matches(".*무릎.*")||rs[0].matches(".*허리.*")) {
-					Uri gmmIntentUri = Uri.parse("geo:0,0?q=정형외과");
-					Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
-					mapIntent.setPackage("com.google.android.apps.maps");
-					startActivity(mapIntent);
-				}
-				else {
-					Uri gmmIntentUri = Uri.parse("geo:0,0?q=병원");
-					Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
-					mapIntent.setPackage("com.google.android.apps.maps");
-					startActivity(mapIntent);
-				}
+            	loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("execute")==0) {
+					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, defaultToArduino);		
+					sendAccMsg(sndMsg);
+					if(rs[0].matches(".*무릎.*")||rs[0].matches(".*허리.*")) {
+						Uri gmmIntentUri = Uri.parse("geo:0,0?q=정형외과");
+						Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+						mapIntent.setPackage("com.google.android.apps.maps");
+						startActivity(mapIntent);
+					}
+					else {
+						Uri gmmIntentUri = Uri.parse("geo:0,0?q=병원");
+						Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+						mapIntent.setPackage("com.google.android.apps.maps");
+						startActivity(mapIntent);
+					}
+            	}
 			}
             else if (rs[0].matches(".*찾아.*")||rs[0].matches(".*검색.*")) {
-            	if(touchCount >= 30) return;
-				String[] words = rs[0].split(" ");
-				
-				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
-				sendAccMsg(sndMsg);
-				
-				instruction = new Intent(Intent.ACTION_WEB_SEARCH);
-				instruction.putExtra(SearchManager.QUERY, words[0]);
-				startActivity(instruction);
+            	if(checkNeed("fatigue")==1) return;
+				loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("execute")==0) {
+            		String[] words = rs[0].split(" ");
+					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
+					sendAccMsg(sndMsg);
+					
+					instruction = new Intent(Intent.ACTION_WEB_SEARCH);
+					instruction.putExtra(SearchManager.QUERY, words[0]);
+					startActivity(instruction);
+            	}
 			}
 			else if (rs[0].matches(".*시간.*후.*")||rs[0].matches(".*시간.*뒤.*")||rs[0].matches(".*시.*알람.*")) {
-				if(touchCount >= 30) return;
-				face.setBackground(pleasure);
-				
-				int position = rs[0].indexOf("시");
-				char hour = rs[0].charAt(position-1);
-				Log.v("checkNeed", "사용자가 요청한 시간 : "+ hour);
-				Calendar calendar = Calendar.getInstance();
-				calendar.add(Calendar.HOUR_OF_DAY, (int)hour);		//현재시간에 사용자가 요청한 시간만큼 더함
-				Log.v("checkNeed", "현재시간 + 요청한 시간 : "+calendar.get(Calendar.HOUR_OF_DAY));
-				int mHour = calendar.get(Calendar.HOUR_OF_DAY);
-				int mMin = calendar.get(Calendar.MINUTE);
-
-				if(hour != ' ') {
-					instruction = new Intent(AlarmClock.ACTION_SET_ALARM);
-					instruction.putExtra(AlarmClock.EXTRA_HOUR, mHour);
-					instruction.putExtra(AlarmClock.EXTRA_MINUTES, mMin);
-					startActivity(instruction);
-				}
+				if(checkNeed("fatigue")==1) return;
+				loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("execute")==0) {
+					int position = rs[0].indexOf("시");
+					char hour = rs[0].charAt(position-1);
+					Log.v("checkNeed", "사용자가 요청한 시간 : "+ hour);
+					Calendar calendar = Calendar.getInstance();
+					calendar.add(Calendar.HOUR_OF_DAY, (int)hour);		//현재시간에 사용자가 요청한 시간만큼 더함
+					Log.v("checkNeed", "현재시간 + 요청한 시간 : "+calendar.get(Calendar.HOUR_OF_DAY));
+					int mHour = calendar.get(Calendar.HOUR_OF_DAY);
+					int mMin = calendar.get(Calendar.MINUTE);
+	
+					if(hour != ' ') {
+						instruction = new Intent(AlarmClock.ACTION_SET_ALARM);
+						instruction.putExtra(AlarmClock.EXTRA_HOUR, mHour);
+						instruction.putExtra(AlarmClock.EXTRA_MINUTES, mMin);
+						startActivity(instruction);
+					}
+            	}
 			}
 			else if (rs[0].matches(".*짜증.*")||rs[0].matches(".*싫어.*")) {
-				if(touchCount >= 30) return;
-				face.setBackground(getResources().getDrawable(R.drawable.bg_angry));
-				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_ANGER,TARGET_SERVO, defaultToArduino);		
-				sendAccMsg(sndMsg);
+				if(checkNeed("fatigue")==1) return;
+				loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount++;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("execute")==0) {
+	            	need.updateData("execute", executeCount);
+					face.setBackground(getResources().getDrawable(R.drawable.bg_angry));
+					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_ANGER,TARGET_SERVO, defaultToArduino);		
+					sendAccMsg(sndMsg);
+            	}
 			}
 			else if (rs[0].matches(".*일어나.*")) {
-				if(touchCount >= 30) {
+				if(checkNeed("fatigue")==1) {
 					touchCount = 0;
 					need.updateData("fatigue", (int)(touchCount));
 					checkNeed("fatigue");
@@ -423,36 +452,32 @@ public class Main extends Activity {
 				if(accMsg.getTarget() == TARGET_FSRSENSORIN) {
 					sensorValueTextView.setText("sensing value : " + soundValue);
 					
-					if(soundValue >= THRESHOLD) {
-						safetyCount++;
-						need.updateData("safety", safetyCount);
-						
-						if(safetyCount < 5 || touchCount < 30) {
-							face.setBackground(getResources().getDrawable(R.drawable.bg_sorrow));
-							AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, defaultToArduino);		
-							sendAccMsg(sndMsg);
+	
+						if(soundValue >= THRESHOLD) {
+							safetyCount++;
+							need.updateData("safety", safetyCount);
+							if(checkNeed("safety")==0) {
+								face.setBackground(getResources().getDrawable(R.drawable.bg_sorrow));
+								AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, defaultToArduino);		
+								sendAccMsg(sndMsg);
+							}
+
+						} else if(soundValue >= 30) {
+							safetyCount--;
+							need.updateData("safety", safetyCount);
+
+							loveCount--;
+							need.updateData("interaction", loveCount);
+							if(checkNeed("interaction")==0) {
+								face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
+								AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
+								sendAccMsg(sndMsg);
+							}
+							
 						} else {
-							checkNeed("safety");
-							checkNeed("fatigue");
-						}
-					} else if(soundValue >= 30) {
-						safetyCount--;
-						need.updateData("safety", safetyCount);
-						loveCount--;
-						need.updateData("interaction", loveCount);
-						if(safetyCount < 5 || touchCount < 30) {
-							face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
-							AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
-							sendAccMsg(sndMsg);
-						} else {
-							checkNeed("interaction");
-							checkNeed("safety");
-							checkNeed("fatigue");
+							//face.setBackground(getResources().getDrawable(R.drawable.bg_basic));
 						}
 						
-					} else {
-						//face.setBackground(getResources().getDrawable(R.drawable.bg_basic));
-					}
 				}
 			break;
 
@@ -604,7 +629,7 @@ public class Main extends Activity {
 	private int checkNeed(String needVar) {
 		if(needVar.equals("hungry")) {
 			int currentHungry = need.getData(needVar);
-			if (currentHungry < 60) {
+			if (currentHungry < 20) {
 		    	Log.v("checkNeed", "hungry 60미만 조건");
 		    	face.setBackground(getResources().getDrawable(R.drawable.bg_hungry));
 				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_HUNGRY,TARGET_SERVO, defaultToArduino);		
@@ -625,47 +650,55 @@ public class Main extends Activity {
 			    	face.setBackground(getResources().getDrawable(R.drawable.bg_tired));
 					//AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, defaultToArduino);
 					//sendAccMsg(sndMsg);
-			    	return 1;
+			    	return 2;
 				} else {
 					Log.v("checkNeed", "little fatigue");
 					face.setEnabled(true);
 					//face.setBackground(getResources().getDrawable(R.drawable.bg_basic));
 					return 0;
 				}
-			}
+			} else
+				return 3;
 			
 		} else if (needVar.equals("safety")) {
-			if(checkNeed("hungry")==0 && checkNeed("fatigue")==0) {	//하위 욕구 결과가 모두 동기 발현되지 않아야 상위 욕구 검사 수행!
+			if(checkNeed("hungry")==0 && (checkNeed("fatigue")==0||checkNeed("fatigue")==2)) {	//하위 욕구 결과가 모두 동기 발현되지 않아야 상위 욕구 검사 수행!
 				int currentSafetyneed = need.getData(needVar);
 				if(currentSafetyneed >= 5) {
-			    	Log.v("checkNeed", "safety 5이상 조건");
+			    	Log.v("checkNeed", "safety need 5이상 조건");
 			    	face.setBackground(getResources().getDrawable(R.drawable.bg_fear));
 					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_FEAR,TARGET_SERVO, defaultToArduino);		
 					sendAccMsg(sndMsg);
 					return 1;
 				} else
 					return 0;
-			}
+			} else	//하위욕구 중에 하나가 동기 조건에 걸릴 경우
+				return 3;
 		} else if (needVar.equals("interaction")) {
-			if(checkNeed("hungry")==0 && checkNeed("fatigue")==0 && checkNeed("safety")==0){
+			if(checkNeed("hungry")==0 && (checkNeed("fatigue")==0||checkNeed("fatigue")==2) && checkNeed("safety")==0){
 				int currentLoveneed = need.getData(needVar);
 				if(currentLoveneed >= 5) {
-			    	Log.v("checkNeed", "loveneed 5이상 조건");
+			    	Log.v("checkNeed", "love need 5이상 조건");
 			    	face.setBackground(getResources().getDrawable(R.drawable.bg_needlove));
 					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
 					sendAccMsg(sndMsg);
 					return 1;
 				} else
 					return 0;
-			}
+			} else
+				return 3;
 		} else if (needVar.equals("execute")) {
-			if(checkNeed("hungry")==0 && checkNeed("fatigue")==0 && checkNeed("safety")==0 && checkNeed("interaction")==0){
+			if(checkNeed("hungry")==0 && (checkNeed("fatigue")==0||checkNeed("fatigue")==2) && checkNeed("safety")==0 && checkNeed("interaction")==0){
 				int currentExecuteneed = need.getData(needVar);
 				if(currentExecuteneed >= 5) {
+					Log.v("checkNeed", "execute need 5이상 조건");
+			    	face.setBackground(getResources().getDrawable(R.drawable.bg_needinst));
+			    	AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
+					sendAccMsg(sndMsg);
 					return 1;
 				} else
 					return 0;
-			}
+			} else
+				return 3;
 			
 		}
 		
