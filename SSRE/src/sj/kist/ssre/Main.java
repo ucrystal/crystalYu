@@ -199,7 +199,7 @@ public class Main extends Activity {
             mResult.toArray(rs);
             recognitionResult.setText(""+rs[0]);
             
-            if(rs[0].matches(".*안녕.*")) {
+            if(rs[0].matches(".*안녕.*")||rs[0].matches(".*귀여워.*")||rs[0].matches(".*귀엽.*")||rs[0].matches(".*고마워.*")||rs[0].matches(".*고맙.*")||rs[0].matches(".*사랑.*")) {
             	if(checkNeed("fatigue")==1) return;	//피곤함이 30이상이면 sleep모드이므로 명령수행없이 음성인식 종료
             	loveCount--;
             	need.updateData("interaction", loveCount);
@@ -212,6 +212,29 @@ public class Main extends Activity {
 				sendAccMsg(sndMsg);
             	}
 			}
+			else if (rs[0].matches(".*짜증.*")||rs[0].matches(".*싫어.*")||rs[0].matches(".*미워.*")) {
+				if(checkNeed("fatigue")==1) return;
+				loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount++;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("execute")==0) {
+	            	need.updateData("execute", executeCount);
+					face.setBackground(getResources().getDrawable(R.drawable.bg_angry));
+					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_ANGER,TARGET_SERVO, defaultToArduino);		
+					sendAccMsg(sndMsg);
+            	}
+			}
+			else if (rs[0].matches(".*일어나.*")) {
+				if(checkNeed("fatigue")==1) {
+					touchCount = 0;
+					need.updateData("fatigue", (int)(touchCount));
+					checkNeed("fatigue");
+					face.setBackground(getResources().getDrawable(R.drawable.bg_surprise));
+					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SURPRISE,TARGET_SERVO, defaultToArduino);		
+					sendAccMsg(sndMsg);
+				}
+			}
             else if (rs[0].matches(".*날씨.*")) {
             	if(checkNeed("fatigue")==1) return;
             	loveCount++;
@@ -219,7 +242,7 @@ public class Main extends Activity {
             	executeCount--;
             	need.updateData("execute", executeCount);
             	if(checkNeed("execute")==0) {
-					face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
+					//face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
 					instruction = new Intent(Intent.ACTION_WEB_SEARCH);
 					instruction.putExtra(SearchManager.QUERY, "날씨");
 					startActivity(instruction);
@@ -232,7 +255,7 @@ public class Main extends Activity {
             	executeCount--;
             	need.updateData("execute", executeCount);
             	if(checkNeed("execute")==0) {
-					face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
+					//face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
 					instruction = new Intent(Intent.ACTION_WEB_SEARCH);
 					instruction.putExtra(SearchManager.QUERY, "뉴스");
 					startActivity(instruction);
@@ -283,8 +306,8 @@ public class Main extends Activity {
             	need.updateData("execute", executeCount);
             	if(checkNeed("execute")==0) {
             		String[] words = rs[0].split(" ");
-					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
-					sendAccMsg(sndMsg);
+					//AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
+					//sendAccMsg(sndMsg);
 					
 					instruction = new Intent(Intent.ACTION_WEB_SEARCH);
 					instruction.putExtra(SearchManager.QUERY, words[0]);
@@ -314,29 +337,6 @@ public class Main extends Activity {
 						startActivity(instruction);
 					}
             	}
-			}
-			else if (rs[0].matches(".*짜증.*")||rs[0].matches(".*싫어.*")) {
-				if(checkNeed("fatigue")==1) return;
-				loveCount++;
-            	need.updateData("interaction", loveCount);
-            	executeCount++;
-            	need.updateData("execute", executeCount);
-            	if(checkNeed("execute")==0) {
-	            	need.updateData("execute", executeCount);
-					face.setBackground(getResources().getDrawable(R.drawable.bg_angry));
-					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_ANGER,TARGET_SERVO, defaultToArduino);		
-					sendAccMsg(sndMsg);
-            	}
-			}
-			else if (rs[0].matches(".*일어나.*")) {
-				if(checkNeed("fatigue")==1) {
-					touchCount = 0;
-					need.updateData("fatigue", (int)(touchCount));
-					checkNeed("fatigue");
-					face.setBackground(getResources().getDrawable(R.drawable.bg_surprise));
-					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SURPRISE,TARGET_SERVO, defaultToArduino);		
-					sendAccMsg(sndMsg);
-				}
 			}
         }
          
