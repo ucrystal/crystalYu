@@ -3,7 +3,12 @@
     package="sj.kist.ssre"
     android:versionCode="1"
     android:versionName="1.0" >
-
+    
+    <supports-screens android:resizeable="true"
+                      android:smallScreens="true" 
+                      android:normalScreens="true" 
+                      android:largeScreens="true" 
+                      android:anyDensity="true" />
     <uses-sdk
         android:minSdkVersion="16"
         android:targetSdkVersion="19" />
@@ -12,10 +17,14 @@
 	<uses-permission android:name="android.permission.RECORD_AUDIO"/>
 	<uses-permission android:name="com.android.alarm.permission.SET_ALARM"/>
 	<uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.camera.autofocus" />
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
+        android:screenOrientation="landscape"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen" >
         <activity
             android:name=".Main"

@@ -12,13 +12,16 @@ import java.util.TimerTask;
 import android.app.Activity;
 import android.app.SearchManager;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.hardware.usb.UsbAccessory;
 import android.hardware.usb.UsbManager;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
@@ -86,6 +89,7 @@ public class Main extends Activity {
 	private TimerTask second;
 	private TextView execute_text;
 	private final Handler handler = new Handler();
+	private AudioManager am;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -111,7 +115,11 @@ public class Main extends Activity {
 		batteryState = (TextView) findViewById(R.id.batteryState);
 		//--화면변경을 위한 변수 설정--//
 	    face = (RelativeLayout) findViewById(R.id.face);
-		
+	    
+	    //진동,소리모드 전환을 위한 오디오매니저
+	    am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+	    
+	    
 		//배터리 충전 상태 값 받아오기
 		IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
 		Intent batteryStatus = this.registerReceiver(null, ifilter);
@@ -220,6 +228,16 @@ public class Main extends Activity {
 				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
 				sendAccMsg(sndMsg);
             	}
+			}
+            else if (rs[0].matches(".*쌤.*")||rs[0].matches(".*샘.*")) {
+				if(checkNeed("fatigue")==1) return;
+					loveCount--;
+	            	need.updateData("interaction", loveCount);
+					if(checkNeed("interaction")==0) {
+						face.setBackground(getResources().getDrawable(R.drawable.bg_surprise));
+						AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SURPRISE,TARGET_SERVO, defaultToArduino);		
+						sendAccMsg(sndMsg);
+					}
 			}
 			else if (rs[0].matches(".*짜증.*")||rs[0].matches(".*싫어.*")||rs[0].matches(".*미워.*")) {
 				if(checkNeed("fatigue")==1) return;
@@ -346,12 +364,80 @@ public class Main extends Activity {
 					}
             	}
 			}
+			else if (rs[0].matches(".*진동.*")) {
+            	if(checkNeed("fatigue")==1) return;
+				loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("interaction")==0) {
+            		String[] words = rs[0].split(" ");
+					
+            		switch (am.getRingerMode()) {   
+            	    case AudioManager.RINGER_MODE_SILENT:   
+            	        Log.i("MyApp","Silent mode");
+            	        Toast.makeText(getApplicationContext(), "진동모드로 변경되었습니다",Toast.LENGTH_SHORT).show();
+            	        am.setRingerMode(AudioManager.RINGER_MODE_VIBRATE);
+            	        break;
+            	    case AudioManager.RINGER_MODE_NORMAL:
+            	    	Log.i("MyApp","normal mode");
+            	    	Toast.makeText(getApplicationContext(), "진동모드로 변경되었습니다",Toast.LENGTH_SHORT).show();
+            	        am.setRingerMode(AudioManager.RINGER_MODE_VIBRATE);
+            	        break;
+            	    }
+            	}
+			}
+			else if (rs[0].matches(".*소리.*")) {
+            	if(checkNeed("fatigue")==1) return;
+				loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("interaction")==0) {
+            		String[] words = rs[0].split(" ");
+					
+            		switch (am.getRingerMode()) {   
+            	    case AudioManager.RINGER_MODE_SILENT:   
+            	        Log.i("MyApp","Silent mode");
+            	        Toast.makeText(getApplicationContext(), "소리모드로 변경되었습니다",Toast.LENGTH_SHORT).show();
+            	        am.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
+            	        break;
+            	    case AudioManager.RINGER_MODE_VIBRATE:
+            	    	Log.i("MyApp","normal mode");
+            	    	Toast.makeText(getApplicationContext(), "소리모드로 변경되었습니다",Toast.LENGTH_SHORT).show();
+            	        am.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
+            	        break;
+            	    }
+            	}
+			}
+			else if (rs[0].matches(".*카카오.*")) {
+            	if(checkNeed("fatigue")==1) return;
+				loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("interaction")==0) {
+            		String[] words = rs[0].split(" ");
+
+            		try { 
+            		    Intent intent = new Intent(); 
+            		    PackageManager pm = getPackageManager(); 
+            		    intent = pm.getLaunchIntentForPackage("com.kakao.talk");
+            		    startActivity(intent); 
+            		} catch (Exception e) { 
+            		    //Log.e("kakao talk execute failed, e=" + e.toString(), null); 
+            		    Uri uri = Uri.parse("market://details?id=com.kakao.talk"); 
+            		    Intent i = new Intent(Intent.ACTION_VIEW, uri); 
+            		    startActivity(i); 
+            		}
+            	}
+			}
         }
          
         @Override
         public void onReadyForSpeech(Bundle params) {
             // TODO Auto-generated method stub
-             
+        	
         }
          
         @Override
