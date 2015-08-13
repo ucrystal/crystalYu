@@ -6,6 +6,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import android.app.Activity;
 import android.app.SearchManager;
@@ -81,6 +83,10 @@ public class Main extends Activity {
 	int loveCount = 0;
 	int executeCount = 0;
 	
+	private TimerTask second;
+	private TextView execute_text;
+	private final Handler handler = new Handler();
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -126,6 +132,9 @@ public class Main extends Activity {
 	    //배터리 상태값 출력
 		//int hungry = need.getData("hungry");
 		//batteryState.setText(Integer.toString(hungry));
+	    
+	    //명령수행욕구 증가 시작
+	    testStart();
 		
 	    //--화면 터치이벤트 구현--//
 		face.setClickable(true);
@@ -203,10 +212,10 @@ public class Main extends Activity {
             	if(checkNeed("fatigue")==1) return;	//피곤함이 30이상이면 sleep모드이므로 명령수행없이 음성인식 종료
             	loveCount--;
             	need.updateData("interaction", loveCount);
-            	executeCount++;
-            	need.updateData("execute", executeCount);
+            	//executeCount++;
+            	//need.updateData("execute", executeCount);
             	
-            	if(checkNeed("execute")==0) {
+            	if(checkNeed("interaction")==0) {
 				face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
 				AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
 				sendAccMsg(sndMsg);
@@ -216,10 +225,9 @@ public class Main extends Activity {
 				if(checkNeed("fatigue")==1) return;
 				loveCount++;
             	need.updateData("interaction", loveCount);
-            	executeCount++;
-            	need.updateData("execute", executeCount);
-            	if(checkNeed("execute")==0) {
-	            	need.updateData("execute", executeCount);
+            	//executeCount++;
+            	//need.updateData("execute", executeCount);
+            	if(checkNeed("interaction")==0) {
 					face.setBackground(getResources().getDrawable(R.drawable.bg_angry));
 					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_ANGER,TARGET_SERVO, defaultToArduino);		
 					sendAccMsg(sndMsg);
@@ -241,7 +249,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
-            	if(checkNeed("execute")==0) {
+            	if(checkNeed("interaction")==0) {
 					//face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
 					instruction = new Intent(Intent.ACTION_WEB_SEARCH);
 					instruction.putExtra(SearchManager.QUERY, "날씨");
@@ -254,7 +262,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
-            	if(checkNeed("execute")==0) {
+            	if(checkNeed("interaction")==0) {
 					//face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
 					instruction = new Intent(Intent.ACTION_WEB_SEARCH);
 					instruction.putExtra(SearchManager.QUERY, "뉴스");
@@ -267,7 +275,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
-            	if(checkNeed("execute")==0) {
+            	if(checkNeed("interaction")==0) {
 					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SURPRISE,TARGET_SERVO, defaultToArduino);		
 					sendAccMsg(sndMsg);
 					instruction = new Intent(Intent.ACTION_CALL, Uri.parse("tel:119"));
@@ -281,7 +289,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
-            	if(checkNeed("execute")==0) {
+            	if(checkNeed("interaction")==0) {
 					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, defaultToArduino);		
 					sendAccMsg(sndMsg);
 					if(rs[0].matches(".*무릎.*")||rs[0].matches(".*허리.*")) {
@@ -304,7 +312,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
-            	if(checkNeed("execute")==0) {
+            	if(checkNeed("interaction")==0) {
             		String[] words = rs[0].split(" ");
 					//AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
 					//sendAccMsg(sndMsg);
@@ -320,7 +328,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
-            	if(checkNeed("execute")==0) {
+            	if(checkNeed("interaction")==0) {
 					int position = rs[0].indexOf("시");
 					char hour = rs[0].charAt(position-1);
 					Log.v("checkNeed", "사용자가 요청한 시간 : "+ hour);
@@ -598,6 +606,35 @@ public class Main extends Activity {
 			}
 		}		
 	};
+	public void testStart() {
+		execute_text = (TextView) findViewById(R.id.execute);
+
+		second = new TimerTask() {
+
+			@Override
+			public void run() {
+				
+				Update();
+				
+			}
+		};
+		Timer timer = new Timer();
+		timer.schedule(second, 0, 60000);
+		
+	}
+
+	protected void Update() {
+		Runnable updater = new Runnable() {
+			public void run() {
+				execute_text.setText("execute need : "+executeCount);
+				checkNeed("execute");
+				executeCount++;
+				need.updateData("execute", executeCount);
+			}
+		};
+		handler.post(updater);
+	}
+
 
 	private void openAccessory(UsbAccessory accessory) {
 		// TODO Auto-generated method stub
