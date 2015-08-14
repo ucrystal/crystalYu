@@ -33,7 +33,7 @@ public class Need {
 	}
 
 	public int getData(final String key) {
-		return prefs.getInt(key, '0');
+		return prefs.getInt(key, 0);
 	}
 
 	public void getAllValue() {
@@ -65,11 +65,13 @@ public class Need {
 		} else {
 			return;
 		}
-		prefs.edit().putInt(key, newValue).apply();
+		editor.putInt(key, newValue).apply();
+		editor.commit();
 	}
 	
 	synchronized public void updateData(final String key, final int newValue) {
-		prefs.edit().putInt(key, newValue).apply();
+		editor.putInt(key, newValue).apply();
+		editor.commit();
 	}
 
 }

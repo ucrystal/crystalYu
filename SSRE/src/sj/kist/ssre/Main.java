@@ -17,6 +17,7 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.hardware.usb.UsbAccessory;
@@ -119,7 +120,6 @@ public class Main extends Activity {
 	    //진동,소리모드 전환을 위한 오디오매니저
 	    am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
 	    
-	    
 		//배터리 충전 상태 값 받아오기
 		IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
 		Intent batteryStatus = this.registerReceiver(null, ifilter);
@@ -127,14 +127,15 @@ public class Main extends Activity {
 		int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
 		batteryPct = level / (float)scale;
 		
-	    //-- Need 클래스 생성 --//
-	    need = new Need(this);
-	    need.setData(needAttributes, initNeed);	
-
-	    //hungry욕구 설정
-		need.updateData("hungry", (int)(batteryPct*100));
-	    
+		need = new Need(this);
+		
+		touchCount = need.getData("fatigue");
+		safetyCount = need.getData("safety");
+		loveCount = need.getData("interaction");
+		executeCount = need.getData("execute");
+		
 	    //hungry욕구 상태 체크 및 욕구동기 수행
+		need.setData("hungry", (int)(batteryPct*100));
 	    checkNeed("hungry");
 
 	    //배터리 상태값 출력
@@ -657,6 +658,17 @@ public class Main extends Activity {
 	protected void onPause() {
 		// TODO Auto-generated method stub
 		super.onPause();
+	    //-- Need 클래스 생성 --//
+	    
+	    //need.setData(needAttributes, initNeed);	
+		need = new Need(this);
+	    //hungry욕구 설정
+		need.updateData("hungry", (int)(batteryPct*100));
+		need.updateData("fatigue", touchCount);
+		need.updateData("safety", safetyCount);
+		need.updateData("interaction", loveCount);
+		need.updateData("execute", executeCount);
+	    
 		closeAccessory();
 	}
 
@@ -705,8 +717,7 @@ public class Main extends Activity {
 			}
 		};
 		Timer timer = new Timer();
-		timer.schedule(second, 0, 60000);
-		
+		timer.schedule(second, 0, 90000);
 	}
 
 	protected void Update() {
@@ -812,7 +823,7 @@ public class Main extends Activity {
 		} else if (needVar.equals("execute")) {
 			if(checkNeed("hungry")==0 && (checkNeed("fatigue")==0||checkNeed("fatigue")==2) && checkNeed("safety")==0 && checkNeed("interaction")==0){
 				int currentExecuteneed = need.getData(needVar);
-				if(currentExecuteneed >= 5) {
+				if(currentExecuteneed >= 10) {
 					Log.v("checkNeed", "execute need 5이상 조건");
 			    	face.setBackground(getResources().getDrawable(R.drawable.bg_needinst));
 			    	AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
