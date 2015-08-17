@@ -10,15 +10,18 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.SearchManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.drawable.Drawable;
 import android.hardware.usb.UsbAccessory;
 import android.hardware.usb.UsbManager;
@@ -31,6 +34,8 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.ParcelFileDescriptor;
 import android.provider.AlarmClock;
+import android.provider.ContactsContract;
+import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -217,7 +222,44 @@ public class Main extends Activity {
             mResult.toArray(rs);
             recognitionResult.setText(""+rs[0]);
             
-            if(rs[0].matches(".*안녕.*")||rs[0].matches(".*귀여워.*")||rs[0].matches(".*귀엽.*")||rs[0].matches(".*고마워.*")||rs[0].matches(".*고맙.*")||rs[0].matches(".*사랑.*")) {
+			if (rs[0].matches(".*문자.*")||rs[0].matches(".*보내.*")) {
+				if(checkNeed("fatigue")==1) return;
+            	loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("interaction")==0) {
+            		if(rs[0].matches(".*한테.*")&&rs[0].matches(".*라고.*")) {
+            			String[] who = rs[0].split("한테");
+            			Log.v("checkNeed", "문자 이름? : "+who[0]);
+                		String s = getPhoneNumber(getApplicationContext(), who[0]);
+                		
+                		String[] context;
+                		String[] context_split;
+                		if(rs[0].matches(".*이라고.*")) {
+                			context = rs[0].split("이라고");
+                			context_split = context[0].split(" ");
+                		} else {
+                			context = rs[0].split("라고");
+                			context_split = context[0].split(" ");
+                		}
+                		
+        				Uri uri = Uri.parse("smsto:"+s);   
+        	            instruction = new Intent(Intent.ACTION_SENDTO, uri);   
+        	            instruction.putExtra("sms_body", context_split[1]);
+        	            startActivity(instruction);
+            		} else {
+            			Intent intent = new Intent(Intent.ACTION_VIEW);
+            			String smsBody = "";
+            			intent.putExtra("sms_body", smsBody);
+            			intent.putExtra("address", "");
+            			intent.setType("vnd.android-dir/mms-sms");
+            			startActivity(intent);
+            		}
+            	}
+
+			}
+			else if(rs[0].matches(".*안녕.*")||rs[0].matches(".*귀여워.*")||rs[0].matches(".*귀엽.*")||rs[0].matches(".*고마워.*")||rs[0].matches(".*고맙.*")||rs[0].matches(".*사랑.*")) {
             	if(checkNeed("fatigue")==1) return;	//피곤함이 30이상이면 sleep모드이므로 명령수행없이 음성인식 종료
             	loveCount--;
             	need.updateData("interaction", loveCount);
@@ -275,17 +317,60 @@ public class Main extends Activity {
 					startActivity(instruction);
             	}
 			}
-            else if (rs[0].matches(".*심심.*")||rs[0].matches(".*뉴스.*")) {
+            else if (rs[0].matches(".*심심.*")) {
             	if(checkNeed("fatigue")==1) return;
-            	loveCount++;
+            	loveCount--;
             	need.updateData("interaction", loveCount);
-            	executeCount--;
-            	need.updateData("execute", executeCount);
+            	//executeCount++;
+            	//need.updateData("execute", executeCount);
             	if(checkNeed("interaction")==0) {
-					//face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
-					instruction = new Intent(Intent.ACTION_WEB_SEARCH);
-					instruction.putExtra(SearchManager.QUERY, "뉴스");
-					startActivity(instruction);
+            		
+            		final CharSequence[] items = {"게임", "동영상", "뉴스"};
+
+            		AlertDialog.Builder builder = new AlertDialog.Builder(Main.this);
+
+            		//알림창의 속성 설정
+            		builder.setTitle("재밌는 걸 준비해봤어요!")        // 제목 설정
+            		.setItems(items, new DialogInterface.OnClickListener(){    // 목록 클릭시 설정
+            			public void onClick(DialogInterface dialog, int index){
+            				switch(index) {
+            				//Toast.makeText(getApplicationContext(), items[index], Toast.LENGTH_SHORT).show();
+            					case 0 ://게임
+            	            		try { 
+            	            		    Intent intent = new Intent(); 
+            	            		    PackageManager pm = getPackageManager(); 
+            	            		    intent = pm.getLaunchIntentForPackage("com.king.candycrushsodasaga");
+            	            		    startActivity(intent); 
+            	            		} catch (Exception e) { 
+            	            		    Uri uri = Uri.parse("market://details?id=com.king.candycrushsodasaga"); 
+            	            		    Intent i = new Intent(Intent.ACTION_VIEW, uri); 
+            	            		    startActivity(i); 
+            	            		}
+            	            		break;
+            					case 1 ://유투브
+            						try { 
+            	            		    Intent intent = new Intent(); 
+            	            		    PackageManager pm = getPackageManager(); 
+            	            		    intent = pm.getLaunchIntentForPackage("com.google.android.youtube");
+            	            		    startActivity(intent); 
+            	            		} catch (Exception e) { 
+            	            		    Uri uri = Uri.parse("market://details?id=com.google.android.youtube"); 
+            	            		    Intent i = new Intent(Intent.ACTION_VIEW, uri); 
+            	            		    startActivity(i); 
+            	            		}
+            						break;
+            					case 2 ://뉴스
+            						Intent instruction = new Intent(Intent.ACTION_WEB_SEARCH);
+            						instruction.putExtra(SearchManager.QUERY, "뉴스");
+            						startActivity(instruction);
+            						break;
+           					}
+            			}
+            		});
+
+            		AlertDialog dialog = builder.create();    // 알림창 객체 생성
+            		dialog.show();    // 알림창 띄우기
+
             	}
 			}
             else if (rs[0].matches(".*119.*")||rs[0].matches(".*구급차.*")) {
@@ -418,8 +503,6 @@ public class Main extends Activity {
             	executeCount--;
             	need.updateData("execute", executeCount);
             	if(checkNeed("interaction")==0) {
-            		String[] words = rs[0].split(" ");
-
             		try { 
             		    Intent intent = new Intent(); 
             		    PackageManager pm = getPackageManager(); 
@@ -433,6 +516,66 @@ public class Main extends Activity {
             		}
             	}
 			}
+			else if (rs[0].matches(".*게임.*")) {
+            	if(checkNeed("fatigue")==1) return;
+				loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("interaction")==0) {
+            		try { 
+            		    Intent intent = new Intent(); 
+            		    PackageManager pm = getPackageManager(); 
+            		    intent = pm.getLaunchIntentForPackage("com.king.candycrushsodasaga");
+            		    startActivity(intent); 
+            		} catch (Exception e) { 
+            		    Uri uri = Uri.parse("market://details?id=com.king.candycrushsodasaga"); 
+            		    Intent i = new Intent(Intent.ACTION_VIEW, uri); 
+            		    startActivity(i); 
+            		}
+            	}
+			}
+			else if (rs[0].matches(".*영상.*")||rs[0].matches(".*유투브.*")) {
+            	if(checkNeed("fatigue")==1) return;
+				loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("interaction")==0) {
+            		try { 
+            		    Intent intent = new Intent(); 
+            		    PackageManager pm = getPackageManager(); 
+            		    intent = pm.getLaunchIntentForPackage("com.google.android.youtube");
+            		    startActivity(intent); 
+            		} catch (Exception e) { 
+            		    Uri uri = Uri.parse("market://details?id=com.google.android.youtube"); 
+            		    Intent i = new Intent(Intent.ACTION_VIEW, uri); 
+            		    startActivity(i); 
+            		}
+            	}
+			}
+			else if (rs[0].matches(".*전화.*")||rs[0].matches(".*통화.*")) {
+            	if(checkNeed("fatigue")==1) return;
+            	loveCount++;
+            	need.updateData("interaction", loveCount);
+            	executeCount--;
+            	need.updateData("execute", executeCount);
+            	if(checkNeed("interaction")==0) {
+            		if(rs[0].matches(".*한테.*")) {
+            			String[] words = rs[0].split("한테");
+            			Log.v("checkNeed", "전화 이름? : "+words[0]);
+                		String s = getPhoneNumber(getApplicationContext(), words[0]);
+    					instruction = new Intent(Intent.ACTION_CALL, Uri.parse("tel:"+s));
+    					startActivity(instruction);
+            		} else {
+	            		//전화번호부 띄우기
+	            		Intent intent = new Intent(Intent.ACTION_PICK);
+	            		intent.setData(ContactsContract.CommonDataKinds.Phone.CONTENT_URI);
+	            	    startActivityForResult(intent, 0);
+            		}
+            	}
+			}
+
         }
          
         @Override
@@ -704,6 +847,88 @@ public class Main extends Activity {
 			}
 		}		
 	};
+	
+	//주소록의 이름으로 번호 구하는 함수
+	private String getPhoneNumber(Context context, String strName)
+	{
+	    Cursor phoneCursor = null;
+	    String strReturn = "";
+	    try
+	    {
+	        // 주소록이 저장된 URI
+	        Uri uContactsUri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
+	 
+	        // 주소록의 이름과 전화번호의 이름
+	        String strProjection = ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME;
+	 
+	        // 주소록을 얻기 위한 쿼리문을 날리고 커서를 리턴 (이름으로 정렬해서 가져옴)
+	        phoneCursor = context.getContentResolver().query(uContactsUri,
+	            null, null, null, strProjection);
+	        phoneCursor.moveToFirst();
+	        //Log.d("TAG", "AddressMgr address count = " + phoneCursor.getCount());
+	 
+	        String name = "";
+	        String number = "";
+	        String email = "";
+	        int nameColumn = phoneCursor.getColumnIndex(Phone.DISPLAY_NAME);
+	        int numberColumn = phoneCursor.getColumnIndex(Phone.NUMBER);
+	        int NumberTypeColumn = phoneCursor.getColumnIndex(Phone.TYPE);
+	 
+	        // stop loop if find
+	        while (!phoneCursor.isAfterLast() && strReturn.equals(""))
+	        {
+	            name = phoneCursor.getString(nameColumn);
+	            number = phoneCursor.getString(numberColumn);
+	            int numberType = Integer.valueOf(phoneCursor.getString(NumberTypeColumn));
+	 
+	            // Log.d("AddressMgr", "AddressMgr  name : " + name +
+	            // "    nunmber : " + number + "   email : " + email);
+	 
+	            // if find, set return values, and stop loops.
+	            if(name.matches(".*"+strName+".*"))
+	            {
+	                strReturn = number;
+	            }
+	 
+	            name = "";
+	            number = "";
+	            email = "";
+	            phoneCursor.moveToNext();
+	        }
+	    }
+	    catch (Exception e)
+	    {
+	        //Log.e("[GetPhonenumberAdapter] getContactData", e.toString());
+	    }
+	    finally
+	    {
+	        if (phoneCursor != null)
+	        {
+	            phoneCursor.close();
+	            phoneCursor = null;
+	        }
+	    }
+	 
+	    return strReturn;
+	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		if(resultCode == RESULT_OK)
+		{
+				Cursor cursor = getContentResolver().query(data.getData(), 
+						new String[]{ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, 
+					ContactsContract.CommonDataKinds.Phone.NUMBER}, null, null, null);
+				cursor.moveToFirst();
+	 	                //mName.setText(cursor.getString(0));        //이름 얻어오기
+	            		//mNumber.setText(cursor.getString(1));     //번호 얻어오기
+	            		Intent intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:"+cursor.getString(1)));
+	            		startActivity(intent);
+	            cursor.close();
+		}
+		super.onActivityResult(requestCode, resultCode, data);
+	}
+	
 	public void testStart() {
 		execute_text = (TextView) findViewById(R.id.execute);
 
