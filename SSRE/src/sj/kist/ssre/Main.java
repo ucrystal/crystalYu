@@ -101,9 +101,14 @@ public class Main extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
-		//--화면이미지 설정--//
-		//basic = getResources().getDrawable(R.drawable.bg_basic);
 		
+		face = (RelativeLayout) findViewById(R.id.face);
+		batteryState = (TextView) findViewById(R.id.batteryState);
+		execute_text = (TextView) findViewById(R.id.execute);
+		sensorValueTextView = (TextView) findViewById(R.id.sensor_value_textview);
+		recognitionResult = (TextView)findViewById(R.id.voice_result);
+		
+		//usb시리얼 통신을 위한 변수 설정
 		mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 		IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
 		registerReceiver(mUsbReceiver, filter);
@@ -112,15 +117,9 @@ public class Main extends Activity {
 		i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
 	    i.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
 	    i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ko-KR");
-	    
 	    mRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
 		mRecognizer.setRecognitionListener(recognitionListener);
-		recognitionResult = (TextView)findViewById(R.id.voice_result);
-	    findViewById(R.id.voice_btn).setOnClickListener(mClickListener);
-	    sensorValueTextView = (TextView) findViewById(R.id.sensor_value_textview);
-		batteryState = (TextView) findViewById(R.id.batteryState);
-		//--화면변경을 위한 변수 설정--//
-	    face = (RelativeLayout) findViewById(R.id.face);
+		findViewById(R.id.voice_btn).setOnClickListener(mClickListener);
 	    
 	    //진동,소리모드 전환을 위한 오디오매니저
 	    am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
@@ -132,6 +131,7 @@ public class Main extends Activity {
 		int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
 		batteryPct = level / (float)scale;
 		
+		//욕구 클래스 생성 및 욕구 동기 값 초기화
 		need = new Need(this);
 		
 		touchCount = need.getData("fatigue");
@@ -142,12 +142,9 @@ public class Main extends Activity {
 	    //hungry욕구 상태 체크 및 욕구동기 수행
 		need.setData("hungry", (int)(batteryPct*100));
 	    checkNeed("hungry");
-
-	    //배터리 상태값 출력
-		//int hungry = need.getData("hungry");
-		//batteryState.setText(Integer.toString(hungry));
 	    
 	    //명령수행욕구 증가 시작
+	    execute_text.setText("execute need : "+executeCount);
 	    testStart();
 		
 	    //--화면 터치이벤트 구현--//
@@ -228,6 +225,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
+            	execute_text.setText("execute need : "+executeCount);
             	if(checkNeed("interaction")==0) {
             		if(rs[0].matches(".*한테.*")&&rs[0].matches(".*라고.*")) {
             			String[] who = rs[0].split("한테");
@@ -310,11 +308,28 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
+            	execute_text.setText("execute need : "+executeCount);
             	if(checkNeed("interaction")==0) {
 					//face.setBackground(getResources().getDrawable(R.drawable.bg_pleasure));
-					instruction = new Intent(Intent.ACTION_WEB_SEARCH);
-					instruction.putExtra(SearchManager.QUERY, "날씨");
-					startActivity(instruction);
+            		
+            		if(rs[0].matches(".*오늘.*")) {
+            			instruction = new Intent(Intent.ACTION_WEB_SEARCH);
+            			instruction.putExtra(SearchManager.QUERY, "오늘 날씨");
+            			startActivity(instruction);
+            		} else if(rs[0].matches(".*내일.*")) {
+            			instruction = new Intent(Intent.ACTION_WEB_SEARCH);
+            			instruction.putExtra(SearchManager.QUERY, "내일 날씨");
+            			startActivity(instruction);
+            		} else if (rs[0].matches(".*모레.*")) {
+            			instruction = new Intent(Intent.ACTION_WEB_SEARCH);
+            			instruction.putExtra(SearchManager.QUERY, "모레 날씨");
+            			startActivity(instruction);
+            		}
+            		else {
+            			instruction = new Intent(Intent.ACTION_WEB_SEARCH);
+            			instruction.putExtra(SearchManager.QUERY, "날씨");
+            			startActivity(instruction);
+            		}
             	}
 			}
             else if (rs[0].matches(".*심심.*")) {
@@ -379,9 +394,8 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
+            	execute_text.setText("execute need : "+executeCount);
             	if(checkNeed("interaction")==0) {
-					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SURPRISE,TARGET_SERVO, defaultToArduino);		
-					sendAccMsg(sndMsg);
 					instruction = new Intent(Intent.ACTION_CALL, Uri.parse("tel:119"));
 					startActivity(instruction);
             	}
@@ -393,6 +407,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
+            	execute_text.setText("execute need : "+executeCount);
             	if(checkNeed("interaction")==0) {
 					AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, defaultToArduino);		
 					sendAccMsg(sndMsg);
@@ -416,6 +431,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
+            	execute_text.setText("execute need : "+executeCount);
             	if(checkNeed("interaction")==0) {
             		String[] words = rs[0].split(" ");
 					//AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_PLEASURE,TARGET_SERVO, defaultToArduino);		
@@ -432,6 +448,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
+            	execute_text.setText("execute need : "+executeCount);
             	if(checkNeed("interaction")==0) {
 					int position = rs[0].indexOf("시");
 					char hour = rs[0].charAt(position-1);
@@ -456,6 +473,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
+            	execute_text.setText("execute need : "+executeCount);
             	if(checkNeed("interaction")==0) {
             		String[] words = rs[0].split(" ");
 					
@@ -479,6 +497,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
+            	execute_text.setText("execute need : "+executeCount);
             	if(checkNeed("interaction")==0) {
             		String[] words = rs[0].split(" ");
 					
@@ -502,6 +521,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
+            	execute_text.setText("execute need : "+executeCount);
             	if(checkNeed("interaction")==0) {
             		try { 
             		    Intent intent = new Intent(); 
@@ -522,6 +542,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
+            	execute_text.setText("execute need : "+executeCount);
             	if(checkNeed("interaction")==0) {
             		try { 
             		    Intent intent = new Intent(); 
@@ -541,6 +562,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
+            	execute_text.setText("execute need : "+executeCount);
             	if(checkNeed("interaction")==0) {
             		try { 
             		    Intent intent = new Intent(); 
@@ -560,6 +582,7 @@ public class Main extends Activity {
             	need.updateData("interaction", loveCount);
             	executeCount--;
             	need.updateData("execute", executeCount);
+            	execute_text.setText("execute need : "+executeCount);
             	if(checkNeed("interaction")==0) {
             		if(rs[0].matches(".*한테.*")) {
             			String[] words = rs[0].split("한테");
@@ -647,6 +670,7 @@ public class Main extends Activity {
 	class AccessoryMessage {
 		byte command;
 		byte target;
+
 		byte value;
 		AccessoryMessage(byte command, byte target, byte value) {
 			this.command = command;
@@ -694,13 +718,21 @@ public class Main extends Activity {
 						if(soundValue >= THRESHOLD) {
 							safetyCount++;
 							need.updateData("safety", safetyCount);
+							
 							if(checkNeed("safety")==0) {
 								face.setBackground(getResources().getDrawable(R.drawable.bg_sorrow));
 								AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, defaultToArduino);		
 								sendAccMsg(sndMsg);
+							} else if(checkNeed("fatigue")==1) {
+								touchCount = 15;
+								need.updateData("fatigue", (int)(touchCount));
+								checkNeed("fatigue");
+								face.setBackground(getResources().getDrawable(R.drawable.bg_surprise));
+								AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SURPRISE,TARGET_SERVO, defaultToArduino);		
+								sendAccMsg(sndMsg);
 							}
 
-						} else if(soundValue >= 30) {
+						} else if(soundValue >= 10) {
 							safetyCount--;
 							need.updateData("safety", safetyCount);
 
@@ -912,6 +944,7 @@ public class Main extends Activity {
 	    return strReturn;
 	}
 	
+	//주소록 리스트 선택 시 자동실행
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		if(resultCode == RESULT_OK)
@@ -920,8 +953,8 @@ public class Main extends Activity {
 						new String[]{ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, 
 					ContactsContract.CommonDataKinds.Phone.NUMBER}, null, null, null);
 				cursor.moveToFirst();
-	 	                //mName.setText(cursor.getString(0));        //이름 얻어오기
-	            		//mNumber.setText(cursor.getString(1));     //번호 얻어오기
+	 	                //mName.setText(cursor.getString(0));       //이름
+	            		//mNumber.setText(cursor.getString(1));     //번호
 	            		Intent intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:"+cursor.getString(1)));
 	            		startActivity(intent);
 	            cursor.close();
@@ -930,12 +963,16 @@ public class Main extends Activity {
 	}
 	
 	public void testStart() {
-		execute_text = (TextView) findViewById(R.id.execute);
 
 		second = new TimerTask() {
 
 			@Override
 			public void run() {
+				int currentExecuteNeed = need.getData("execute");
+				
+				//사용자가 오랫동안 아무 작업도 안할 시 업데이트 중지
+				if(currentExecuteNeed>=15)
+					return;
 				
 				Update();
 				
@@ -1007,6 +1044,7 @@ public class Main extends Activity {
 				} else if(currentFatigue >= 15) {
 					Log.v("checkNeed", "fatigue 15이상 조건");
 			    	face.setBackground(getResources().getDrawable(R.drawable.bg_tired));
+			    	face.setEnabled(true);
 					//AccessoryMessage sndMsg = new AccessoryMessage(COMMAND_SORROW,TARGET_SERVO, defaultToArduino);
 					//sendAccMsg(sndMsg);
 			    	return 2;
