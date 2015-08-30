@@ -73,7 +73,7 @@ public class Main extends Activity {
 	
 	private static final byte COMMAND_HUNGRY = 0xb;
 	
-	private final int THRESHOLD = 300;
+	private final int THRESHOLD = 200;
 	
 	private String [] needAttributes = {"hungry", "fatigue", "safety", "interaction", "execute"};
 	private int [] initNeed = {0,0,0,0,0}; 
